@@ -1,0 +1,97 @@
+#!/usr/bin/env python2
+#encoding: windows-1252
+
+# To change this license header, choose License Headers in Project Properties.
+# To change this template file, choose Tools | Templates
+# and open the template in the editor
+from __future__ import division
+import csv 
+import sys
+import numpy as np
+from numpy  import array
+from collections import *
+
+if __name__ == "__main__":
+
+  with open(sys.argv[1], 'rU') as f:
+        
+        reader = csv.reader(f, delimiter=',') #read csv file and separate it according commas
+        main_list=list(reader)
+        
+        list1=[item[0] for item in main_list] #extract contact_id into list1
+        list2=[item[1] for item in main_list] #extract event into list2
+        list3=[item[2] for item in main_list] #extract score into list3
+        
+        list1=map(int, list1) #convert list1 to integer
+        list3=map(float,list3)#convert list3 to decimal
+        
+        for i in range(len(list2)):
+            
+            if(str(list2[i])==' web'): #if event=web, multiple by 1.0
+                list3[i]=list3[i] * 1.0
+            elif(str(list2[i])==' email'): #if event=web, multiple by 1.2
+                list3[i]=list3[i] * 1.2
+            elif(str(list2[i])==' social'): #if event=web, multiple by 1.5
+                list3[i]=list3[i] * 1.5
+            else:                      #if event=web, multiple by 2.0
+                list3[i]=list3[i] * 2.0
+                
+          
+       #create a dictionary with contact_id as keys and score as values     
+        temp = defaultdict(list) 
+        for l1, l2 in zip(list1, list3):
+            temp[l1].append(l2)
+        
+       #since each contact_id can be associated with multiple events, sum all the scores corresponding to a particular contact_id
+        temp = {k:sum(v) for k,v in temp.items()}
+       #split the dictionary into two lists, called keys(contact_id) and values(scores)
+        keys = temp.keys()
+        values = temp.values()
+        
+    
+       #compute normalized scores
+       
+        output = []
+        old_max = max(values)
+        old_min = min(values)
+        
+        new_max = 100.00
+        new_min = 0.00
+        
+        for i in range(len(values)):
+            new_list = (((new_max - new_min) * (values[i] - old_min)) / (old_max - old_min))  + new_min
+            output.append(new_list)
+        normalized_score=array(output) #normalized_score contains the weighted scores which are normalized
+      
+        normalized_score=np.round(normalized_score,decimals=0) #round to closest integer
+        #calculate the four percentiles : 0th, 25th, 75th and 100th
+        q1=np.percentile(normalized_score,25)
+        q2=np.percentile(normalized_score,50)
+        q3=np.percentile(normalized_score,75)
+#       q4=np.percentile(normalized_score,100) # we do not need to calculate the 4th quartile, it is understood
+
+        quartile_label=[None]*10
+       
+        #label the scores according to which percentile they fall in
+        for i in range(len(normalized_score)):
+            if(0<=normalized_score[i]<=q1):
+                quartile_label[i]="bronze"
+            elif(q1<normalized_score[i]<=q2):
+                quartile_label[i]="silver"
+            elif(q2<normalized_score[i]<=q3):
+                quartile_label[i]="gold"
+            else:
+                quartile_label[i]="platinum"
+        #quartile_label has the values in terms of gold/plat/silver/bronze
+
+        rows=zip(keys,quartile_label,normalized_score)#form a list of keys, quartile_label and normalized_score
+
+        #print the output as per required format, removing paranthesis and inverted commas
+        for i in range(len(keys)):
+           rows[i]=str(rows[i]);
+           rows[i]= rows[i].strip("()")
+           rows[i]= rows[i].replace(".0","")
+           rows[i]=rows[i].replace("'", "")
+           print (rows[i])
+        
+        
